@@ -29,6 +29,9 @@ Connect telescopes to the Gno.land blockchain, enabling telescope owners to shar
 ## Image Licensing
 - All captured images are by default CC BY-NC-SA
 
+## Ownership
+This project is owned by NewTendermint LLC
+
 ## Inspiration
 This is similar in spirit to [**PiaGno**](https://github.com/gnoverse/piagno), but for stargazing instead of music.
 
