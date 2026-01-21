@@ -11,6 +11,7 @@ Connect telescopes to the Gno.land blockchain, enabling telescope owners to shar
 - Display a live, worldwide map of available telescopes
 - Store and share captured images using Imgur
 - Owner-defined access control rules
+- Store telescope capabilities for filtering and discovery
 
 ## Hardware
 - Begin with Seestar S30 / S50 smart telescopes using the open-source [seestar_alp](https://github.com/smart-underworld/seestar_alp) project
