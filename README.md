@@ -1,4 +1,3 @@
-# WORK IN PROGRESS
 # GnoNightSky: Decentralized Telescope Network
 
 Connect telescopes to the Gno.land blockchain. Telescope owners share access to their equipment; anyone with access can point the telescope at any target and get a captured image back.
