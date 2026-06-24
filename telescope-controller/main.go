@@ -55,30 +55,67 @@ func loadConfig(path string) config {
 	return cfg
 }
 
-// gnokeyQuery runs gnokey query vm/qrender and returns the content inside the ``` block
+// gnokeyQuery runs gnokey query vm/qrender and returns the content inside the
+// first ``` fenced block. Arguments are passed directly to gnokey (no shell),
+// so realm/path values can't be interpreted as shell syntax.
 func gnokeyQuery(cfg config, path string) (string, error) {
-	sh := fmt.Sprintf(
-		"gnokey query vm/qrender -remote %s -data '%s:%s' | awk '/```/{f=!f; next} f'",
-		cfg.Gno.Remote, cfg.Gno.RealmPath, path,
-	)
-	out, err := exec.Command("sh", "-c", sh).Output()
+	out, err := exec.Command(
+		"gnokey", "query", "vm/qrender",
+		"-remote", cfg.Gno.Remote,
+		"-data", cfg.Gno.RealmPath+":"+path,
+	).Output()
 	if err != nil {
 		return "", fmt.Errorf("query %s: %w", path, err)
 	}
-	return strings.TrimSpace(string(out)), nil
+	return extractFenced(string(out)), nil
 }
 
-// gnokeyCall runs gnokey maketx call for the given function and args
-func gnokeyCall(cfg config, fn string, args ...string) error {
-	argFlags := ""
-	for _, a := range args {
-		argFlags += fmt.Sprintf(" -args %q", a)
+// extractFenced returns the text inside ``` fences, mirroring the old
+// `awk '/```/{f=!f; next} f'` filter: toggle on each fence line, emit the
+// lines in between.
+func extractFenced(s string) string {
+	var b strings.Builder
+	inFence := false
+	for _, line := range strings.Split(s, "\n") {
+		if strings.Contains(line, "```") {
+			inFence = !inFence
+			continue
+		}
+		if inFence {
+			b.WriteString(line)
+			b.WriteByte('\n')
+		}
 	}
-	sh := fmt.Sprintf(
-		`echo "" | gnokey maketx call -pkgpath "%s" -func "%s"%s -gas-fee 1000000ugnot -gas-wanted 10000000 -send "" -broadcast -chainid "%s" -insecure-password-stdin=true -remote "%s" %s`,
-		cfg.Gno.RealmPath, fn, argFlags, cfg.Gno.ChainID, cfg.Gno.Remote, cfg.Gno.Wallet,
+	return strings.TrimSpace(b.String())
+}
+
+// gnokeyCall runs gnokey maketx call for the given function and args. Every
+// value (including chain-sourced args like the requester address and image
+// URL) is passed as a separate argv element, so none of it is ever parsed by a
+// shell. The empty password for -insecure-password-stdin is fed via stdin.
+func gnokeyCall(cfg config, fn string, args ...string) error {
+	cmdArgs := []string{
+		"maketx", "call",
+		"-pkgpath", cfg.Gno.RealmPath,
+		"-func", fn,
+	}
+	for _, a := range args {
+		cmdArgs = append(cmdArgs, "-args", a)
+	}
+	cmdArgs = append(cmdArgs,
+		"-gas-fee", "1000000ugnot",
+		"-gas-wanted", "10000000",
+		"-send", "",
+		"-broadcast",
+		"-chainid", cfg.Gno.ChainID,
+		"-insecure-password-stdin=true",
+		"-remote", cfg.Gno.Remote,
+		cfg.Gno.Wallet,
 	)
-	out, err := exec.Command("sh", "-c", sh).CombinedOutput()
+
+	cmd := exec.Command("gnokey", cmdArgs...)
+	cmd.Stdin = strings.NewReader("\n") // empty password
+	out, err := cmd.CombinedOutput()
 	if err != nil {
 		return fmt.Errorf("call %s: %w\n%s", fn, err, out)
 	}
