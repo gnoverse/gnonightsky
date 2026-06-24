@@ -1,12 +1,12 @@
 package nightsky
 
 import (
-	"chain/runtime"
+	"strings"
 	"time"
 
 	"gno.land/p/jeronimoalbi/mdform"
 	"gno.land/p/moul/md"
-	"gno.land/p/nt/ufmt"
+	"gno.land/p/nt/ufmt/v0"
 )
 
 // RenderNightsky generates the markdown output for the telescope realm.
@@ -49,17 +49,16 @@ func (r *TelescopeRealm) renderMainPage() string {
 
 	out += "## Quick Stats\n\n"
 	out += ufmt.Sprintf("📋 Commands in queue: %d\n\n", len(r.CommandQueue))
-	out += ufmt.Sprintf("📸 Total captures: %d\n\n", len(r.CaptureHistory))
-	out += ufmt.Sprintf("👥 Authorized users: %d\n\n", len(r.AccessRules))
+	out += ufmt.Sprintf("📸 Total captures: %d\n\n", r.Captures.Len())
+	out += ufmt.Sprintf("👥 Authorized users: %d\n\n", r.AccessRules.Size())
 
 	out += "## Quick Links\n\n"
-	out += md.Link("🎮 Control Telescope", getPath(":control")) + " - Submit commands\n\n"
-	out += md.Link("👥 Access Rules", getPath(":access")) + " - View and manage user access\n\n"
-	out += md.Link("📋 Command Queue", getPath(":commands")) + "\n\n"
-	out += md.Link("📸 Capture History", getPath(":captures")) + "\n\n"
+	out += md.Link("🎮 Control Telescope", r.path(":control")) + " - Submit commands\n\n"
+	out += md.Link("👥 Access Rules", r.path(":access")) + " - View and manage user access\n\n"
+	out += md.Link("📋 Command Queue", r.path(":commands")) + "\n\n"
+	out += md.Link("📸 Capture History", r.path(":captures")) + "\n\n"
 
-	if len(r.CaptureHistory) > 0 {
-		latest := r.CaptureHistory[0]
+	if latest, ok := r.Captures.Latest(); ok {
 		out += "## Latest Capture\n\n"
 		out += "![Latest capture](" + latest.ImageURL + ")\n\n"
 		out += ufmt.Sprintf("_RA %.8fh · Dec %.8f° · %ds_\n\n", latest.TargetRA, latest.TargetDec, latest.Exposure)
@@ -94,7 +93,7 @@ func (r *TelescopeRealm) renderControl() string {
 
 	out += form.String() + "\n\n"
 	out += "---\n\n"
-	out += md.Link("← Back", getPath("")) + "\n\n"
+	out += md.Link("← Back", r.path("")) + "\n\n"
 	return out
 }
 
@@ -117,39 +116,43 @@ func (r *TelescopeRealm) renderCommandQueue() string {
 		}
 	}
 
-	out += md.Link("← Back", getPath("")) + "\n\n"
+	out += md.Link("← Back", r.path("")) + "\n\n"
 	return out
 }
 
 func (r *TelescopeRealm) renderCaptureHistory() string {
 	out := "# Capture History\n\n"
 
-	if len(r.CaptureHistory) == 0 {
+	if r.Captures.Len() == 0 {
 		out += "No captures yet.\n\n"
 	} else {
-		out += ufmt.Sprintf("Showing %d most recent captures:\n\n", len(r.CaptureHistory))
-		for i, capture := range r.CaptureHistory {
-			out += ufmt.Sprintf("### Capture #%d\n\n", i+1)
+		out += ufmt.Sprintf("Showing %d most recent captures:\n\n", r.Captures.Len())
+		i := 0
+		r.Captures.IterateNewest(func(capture CaptureResult) bool {
+			i++
+			out += ufmt.Sprintf("### Capture #%d\n\n", i)
 			out += ufmt.Sprintf("**Target:** RA %.8fh, Dec %.8f°\n\n", capture.TargetRA, capture.TargetDec)
 			out += ufmt.Sprintf("**Exposure:** %d seconds\n\n", capture.Exposure)
 			out += "**Captured by:** " + capture.CapturedBy + "\n\n"
 			out += "**Image:** " + md.Link("View", capture.ImageURL) + "\n\n"
 			out += "---\n\n"
-		}
+			return false
+		})
 	}
 
-	out += md.Link("← Back", getPath("")) + "\n\n"
+	out += md.Link("← Back", r.path("")) + "\n\n"
 	return out
 }
 
 func (r *TelescopeRealm) renderAccessRules() string {
 	out := "# 👥 Access Rules\n\n"
 
-	if len(r.AccessRules) == 0 {
+	if r.AccessRules.Size() == 0 {
 		out += "No access rules configured. Only the owner can use the telescope.\n\n"
 	} else {
-		out += ufmt.Sprintf("%d user(s) have access:\n\n", len(r.AccessRules))
-		for _, rule := range r.AccessRules {
+		out += ufmt.Sprintf("%d user(s) have access:\n\n", r.AccessRules.Size())
+		r.AccessRules.Iterate("", "", func(_ string, value any) bool {
+			rule := value.(AccessRule)
 			out += "**User:** " + rule.AllowedAddress
 			if rule.ExpiresAt.IsZero() {
 				out += " (Expires: Never)\n\n"
@@ -157,7 +160,8 @@ func (r *TelescopeRealm) renderAccessRules() string {
 				out += " (Expires: " + rule.ExpiresAt.Format(time.RFC1123) + ")\n\n"
 			}
 			out += "---\n\n"
-		}
+			return false
+		})
 	}
 
 	out += "## Grant Access\n\n"
@@ -174,7 +178,7 @@ func (r *TelescopeRealm) renderAccessRules() string {
 		String() + "\n\n"
 
 	out += "---\n\n"
-	out += md.Link("← Back", getPath("")) + "\n\n"
+	out += md.Link("← Back", r.path("")) + "\n\n"
 	return out
 }
 
@@ -199,12 +203,9 @@ func (r *TelescopeRealm) renderCommandData() string {
 	return "```\n" + data + "\n```"
 }
 
-// getPath builds an absolute URL path for the current realm with an optional suffix.
-func getPath(addon string) string {
-	pkgPath := runtime.CurrentRealm().PkgPath()
-	if len(pkgPath) > 9 && pkgPath[:9] == "gno.land/" {
-		return pkgPath[8:] + addon
-	}
-	return pkgPath + addon
+// path builds an absolute URL path for this realm with an optional suffix,
+// using the pkgPath stored on the config at construction time. This avoids a
+// runtime realm lookup entirely (no chain/runtime/unsafe needed).
+func (r *TelescopeRealm) path(addon string) string {
+	return strings.TrimPrefix(r.Config.RealmPath, "gno.land") + addon
 }
-

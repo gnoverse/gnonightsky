@@ -1,57 +1,53 @@
 package nightsky
 
 import (
-	"chain/runtime"
-
-	"gno.land/p/nt/ownable"
+	"gno.land/p/nt/avl/v0"
+	"gno.land/p/nt/ownable/v0"
 	"gno.land/p/vik000/nightsky"
 )
 
-var (
-	OwnableMain = ownable.NewWithAddress("g13kytw9mpyutwmyg5eq7arqxqcszfl6uq4p89zg")
-)
+// OwnableMain holds the network admin. Ownable is safe to export as a
+// top-level object: its authority-mutating methods verify the caller against
+// the stored owner, so exporting it does not grant write access.
+var OwnableMain = ownable.NewWithAddress("g13kytw9mpyutwmyg5eq7arqxqcszfl6uq4p89zg")
 
-// RemoveTelescope allows admin to remove a telescope from the network
-func RemoveTelescope(addr string) {
-	checkPermission()
+// RemoveTelescope allows the admin to remove a telescope from the network.
+// pkgPath is the telescope realm's package path (the registry key).
+func RemoveTelescope(cur realm, pkgPath string) {
+	assertAdmin(cur)
 
-	_, exists := telescopes[addr]
-	if !exists {
+	if _, removed := telescopes.Remove(pkgPath); !removed {
 		panic("telescope not found")
 	}
-
-	delete(telescopes, addr)
 }
 
 // ClearAllTelescopes removes all telescopes (emergency use only)
-func ClearAllTelescopes() {
-	checkPermission()
+func ClearAllTelescopes(cur realm) {
+	assertAdmin(cur)
 
-	telescopes = make(map[string]nightsky.TelescopeConfig)
+	telescopes = avl.NewTree()
 }
 
-// ClearCaptures clears the recent captures list
-func ClearCaptures() {
-	checkPermission()
+// ClearCaptures clears the recent captures feed
+func ClearCaptures(cur realm) {
+	assertAdmin(cur)
 
-	recentCaptures = []nightsky.CaptureResult{}
+	recentCaptures = nightsky.NewCaptureFeed(maxRecentCaptures)
 }
 
-// RemoveCapture removes a specific capture by index
-func RemoveCapture(idx int) {
-	checkPermission()
+// RemoveCapture removes a single capture by its position in the newest-first
+// feed (0 = most recent), for moderating an individual entry.
+func RemoveCapture(cur realm, index int) {
+	assertAdmin(cur)
 
-	if idx < 0 || idx >= len(recentCaptures) {
+	if !recentCaptures.RemoveAt(index) {
 		panic("invalid capture index")
 	}
-
-	recentCaptures = append(recentCaptures[:idx], recentCaptures[idx+1:]...)
 }
 
-func checkPermission() {
-	addr := runtime.PreviousRealm().Address()
-	if addr == OwnableMain.Owner() {
-		return
-	}
-	panic("access restricted")
+// assertAdmin panics unless the calling EOA is the network admin. These are
+// crossing functions, so cur.Previous() is the statically-scoped immediate
+// caller and the AssertOwnedBy check is sound — no chain/runtime/unsafe needed.
+func assertAdmin(cur realm) {
+	OwnableMain.AssertOwnedBy(cur.Previous().Address())
 }

@@ -1,7 +1,18 @@
+// Package nightsky holds the shared types and single-telescope logic for the
+// GnoNightSky telescope network.
+//
+// Note on panics: although this lives under p/, it is application-specific
+// logic for the NightSky realms rather than a general-purpose reusable
+// library. It deliberately panics on invalid input / failed preconditions
+// (the assert-like style described in effective-gno) so the wrapping realms
+// don't have to re-check every error. Callers that want softer handling
+// should validate before calling.
 package nightsky
 
 import (
 	"time"
+
+	"gno.land/p/nt/avl/v0"
 )
 
 // TelescopeConfig contains the settings and configuration for a telescope
@@ -11,7 +22,7 @@ type TelescopeConfig struct {
 	Latitude   float64   // Geographic location
 	Longitude  float64   // Geographic location
 	Owner      string    // Owner's gno address
-	RealmPath  string    // Path to user's realm (e.g., "/r/username/nightsky")
+	RealmPath  string    // Path to the telescope's realm (e.g., "/r/username/telescope")
 	Status     string    // Current status: "online", "offline", "busy", "error"
 	LastUpdate time.Time // Last status update
 }
@@ -65,18 +76,15 @@ func (t *TelescopeConfig) UpdateStatus(status string) {
 	t.LastUpdate = time.Now()
 }
 
-// IsAccessAllowed checks if an address has access based on rules
-func IsAccessAllowed(address string, rules []AccessRule) bool {
-	now := time.Now()
-	for _, rule := range rules {
-		if rule.AllowedAddress == address {
-			// Check if access hasn't expired
-			if rule.ExpiresAt.IsZero() || now.Before(rule.ExpiresAt) {
-				return true
-			}
-		}
+// IsAccessAllowed checks if an address has a current (non-expired) access rule.
+// rules is an avl.Tree keyed by allowed address holding AccessRule values.
+func IsAccessAllowed(address string, rules *avl.Tree) bool {
+	value, ok := rules.Get(address)
+	if !ok {
+		return false
 	}
-	return false
+	rule := value.(AccessRule)
+	return rule.ExpiresAt.IsZero() || time.Now().Before(rule.ExpiresAt)
 }
 
 // ValidateCommand validates a telescope command
@@ -100,27 +108,31 @@ func ValidateCommand(cmd TelescopeCommand, config TelescopeConfig) {
 	}
 }
 
+// maxCaptureHistory is the number of captures a single telescope keeps locally.
+const maxCaptureHistory = 100
+
 // TelescopeRealm manages a single telescope's state and operations
 type TelescopeRealm struct {
-	Config         *TelescopeConfig
-	AccessRules    []AccessRule
-	CommandQueue   []TelescopeCommand
-	CaptureHistory []CaptureResult
-	OwnerAddress   string
+	Config       *TelescopeConfig
+	AccessRules  *avl.Tree // key: allowed address -> AccessRule
+	CommandQueue []TelescopeCommand
+	Captures     *CaptureFeed
+	OwnerAddress string
 }
 
 // NewTelescopeRealm creates a new telescope realm instance
 func NewTelescopeRealm(config *TelescopeConfig) *TelescopeRealm {
 	return &TelescopeRealm{
-		Config:         config,
-		AccessRules:    []AccessRule{},
-		CommandQueue:   []TelescopeCommand{},
-		CaptureHistory: []CaptureResult{},
-		OwnerAddress:   config.Owner,
+		Config:       config,
+		AccessRules:  avl.NewTree(),
+		CommandQueue: []TelescopeCommand{},
+		Captures:     NewCaptureFeed(maxCaptureHistory),
+		OwnerAddress: config.Owner,
 	}
 }
 
-// GrantAccess allows the owner to grant access to another user
+// GrantAccess allows the owner to grant access to another user. Re-granting to
+// an existing address overwrites the previous rule.
 func (r *TelescopeRealm) GrantAccess(caller, address string, durationDays int) {
 	r.checkOwner(caller)
 
@@ -140,20 +152,13 @@ func (r *TelescopeRealm) GrantAccess(caller, address string, durationDays int) {
 		ExpiresAt:      expiresAt,
 	}
 
-	r.AccessRules = append(r.AccessRules, rule)
+	r.AccessRules.Set(address, rule)
 }
 
 // RevokeAccess removes access for a specific address
 func (r *TelescopeRealm) RevokeAccess(caller, address string) {
 	r.checkOwner(caller)
-
-	newRules := []AccessRule{}
-	for _, rule := range r.AccessRules {
-		if rule.AllowedAddress != address {
-			newRules = append(newRules, rule)
-		}
-	}
-	r.AccessRules = newRules
+	r.AccessRules.Remove(address)
 }
 
 // SubmitCommand allows authorized users to submit telescope commands
@@ -223,12 +228,7 @@ func (r *TelescopeRealm) RecordCapture(caller, imageURL string, targetRA, target
 		TelescopeID: r.Config.Name,
 	}
 
-	r.CaptureHistory = append([]CaptureResult{capture}, r.CaptureHistory...)
-
-	// Keep last 100 captures
-	if len(r.CaptureHistory) > 100 {
-		r.CaptureHistory = r.CaptureHistory[:100]
-	}
+	r.Captures.Add(capture)
 
 	// Update status back to online
 	r.Config.UpdateStatus("online")
@@ -248,12 +248,12 @@ func (r *TelescopeRealm) GetCommandCount() int {
 
 // GetCaptureCount returns the number of stored captures
 func (r *TelescopeRealm) GetCaptureCount() int {
-	return len(r.CaptureHistory)
+	return r.Captures.Len()
 }
 
 // GetAccessRuleCount returns the number of access rules
 func (r *TelescopeRealm) GetAccessRuleCount() int {
-	return len(r.AccessRules)
+	return r.AccessRules.Size()
 }
 
 // checkOwner verifies the caller is the owner
