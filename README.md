@@ -71,9 +71,9 @@ Copy `gno.land/r/vik000/telescope` and update:
 - telescope name, model, coordinates
 - package path in `gnomod.toml`
 
-Registration with the network happens automatically from `init()` via `registry.Register(cross, config)`.
+Registration with the network happens automatically from `init()` via `registry.Register(cross(cur), config)`.
 
-Then publish your realm:
+### 2. Publish your realm
 
 ```bash
 gnokey maketx addpkg \

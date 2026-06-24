@@ -1,2 +1,6 @@
 telescope-controller/tmp.jpg
 telescope-controller/telescope-controller
+
+# Local-only: internal notes and dev test runner
+TODO.md
+test.sh
