@@ -4,6 +4,8 @@ Connect telescopes to the Gno.land blockchain. Telescope owners share access to 
 
 **Goal:** Observe anything in the sky in real time through a community-driven telescope network.
 
+## **[Demo video](https://www.youtube.com/watch?v=RgoUgKUKft8)**
+
 Architecture inspired by [PiaGno](https://github.com/gnoverse/piagno) 🎹
 
 ---
