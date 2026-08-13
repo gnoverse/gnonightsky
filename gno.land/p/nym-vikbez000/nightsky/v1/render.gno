@@ -74,7 +74,7 @@ func (r *TelescopeRealm) renderMainPage() string {
 	out += "  -broadcast YOUR_ADDRESS\n"
 	out += "```\n\n"
 
-	out += md.Link("← Back to NightSky Network", "/r/vik000/nightsky") + "\n\n"
+	out += md.Link("← Back to NightSky Network", "/r/nym-vikbez000/nightsky/v1") + "\n\n"
 	return out
 }
 

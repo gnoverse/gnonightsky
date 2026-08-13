@@ -2,12 +2,13 @@ package nightsky
 
 import (
 	"chain"
+	"strings"
 	"time"
 
 	"gno.land/p/moul/md"
 	"gno.land/p/nt/avl/v0"
 	"gno.land/p/nt/ufmt/v0"
-	"gno.land/p/vik000/nightsky"
+	nightsky "gno.land/p/nym-vikbez000/nightsky/v1"
 	"gno.land/r/sys/users"
 )
 
@@ -117,11 +118,10 @@ func UnregisterTelescope(cur realm) {
 
 // mustGetTelescope returns the config for pkgPath or panics if not registered.
 func mustGetTelescope(pkgPath string) nightsky.TelescopeConfig {
-	value, exists := telescopes.Get(pkgPath)
-	if !exists {
+	if !telescopes.Has(pkgPath) {
 		panic("telescope not registered")
 	}
-	return value.(nightsky.TelescopeConfig)
+	return telescopes.Get(pkgPath).(nightsky.TelescopeConfig)
 }
 
 // GetTelescopeCount returns the number of registered telescopes
@@ -179,9 +179,9 @@ func renderMainPage() string {
 	out += ufmt.Sprintf("🔴 Offline: %d\n\n", totalTelescopes-onlineTelescopes)
 
 	out += md.H2("Quick Links")
-	out += md.Link("View All Telescopes", "/r/vik000/nightsky:telescopes") + "\n\n"
-	out += md.Link("Recent Captures", "/r/vik000/nightsky:captures") + "\n\n"
-	out += md.Link("Telescope Map", "/r/vik000/nightsky:map") + "\n\n"
+	out += md.Link("View All Telescopes", "/r/nym-vikbez000/nightsky/v1:telescopes") + "\n\n"
+	out += md.Link("Recent Captures", "/r/nym-vikbez000/nightsky/v1:captures") + "\n\n"
+	out += md.Link("Telescope Map", "/r/nym-vikbez000/nightsky/v1:map") + "\n\n"
 
 	if latest, ok := recentCaptures.Latest(); ok {
 		out += md.H2("Latest Capture")
@@ -193,9 +193,9 @@ func renderMainPage() string {
 	out += md.HorizontalRule()
 
 	out += md.H2("How to Register Your Telescope")
-	out += "Deploy your own telescope realm using the `/p/vik000/nightsky` package,\n"
+	out += "Deploy your own telescope realm using the `/p/nym-vikbez000/nightsky/v1` package,\n"
 	out += "then call `nightsky.Register(cross(cur), ...)` from your `init()` function.\n\n"
-	out += "You can clone " + md.Link("my telescope realm", "/r/vik000/telescope") + " as a starting point.\n\n"
+	out += "You can clone " + md.Link("my telescope realm", "/r/nym-vikbez000/telescope") + " as a starting point.\n\n"
 
 	out += md.H2("About")
 	out += "NightSky enables telescope owners to share access to their equipment through a decentralized network.\n\n"
@@ -210,7 +210,7 @@ func renderTelescopeList() string {
 
 	if telescopes.Size() == 0 {
 		out += "\nNo telescopes registered yet.\n\n"
-		out += md.Link("← Back to main page", "/r/vik000/nightsky") + "\n\n"
+		out += md.Link("← Back to main page", "/r/nym-vikbez000/nightsky/v1") + "\n\n"
 		return out
 	}
 
@@ -233,12 +233,12 @@ func renderTelescopeList() string {
 		out += ufmt.Sprintf("**Owner:** %s\n\n", usernameOrAddressLink(config.Owner))
 		out += ufmt.Sprintf("**Location:** %.4f°, %.4f°\n\n", config.Latitude, config.Longitude)
 		out += ufmt.Sprintf("**Status:** %s\n\n", config.Status)
-		out += ufmt.Sprintf("**Realm:** %s\n\n", md.Link("Visit", config.RealmPath))
+		out += ufmt.Sprintf("**Realm:** %s\n\n", md.Link("Visit", strings.TrimPrefix(config.RealmPath, "gno.land")))
 		out += md.HorizontalRule()
 		return false
 	})
 
-	out += md.Link("← Back to main page", "/r/vik000/nightsky") + "\n\n"
+	out += md.Link("← Back to main page", "/r/nym-vikbez000/nightsky/v1") + "\n\n"
 
 	return out
 }
@@ -249,7 +249,7 @@ func renderRecentCaptures() string {
 
 	if recentCaptures.Len() == 0 {
 		out += "\nNo captures yet.\n\n"
-		out += md.Link("← Back to main page", "/r/vik000/nightsky") + "\n\n"
+		out += md.Link("← Back to main page", "/r/nym-vikbez000/nightsky/v1") + "\n\n"
 		return out
 	}
 
@@ -268,7 +268,7 @@ func renderRecentCaptures() string {
 		return false
 	})
 
-	out += md.Link("← Back to main page", "/r/vik000/nightsky") + "\n\n"
+	out += md.Link("← Back to main page", "/r/nym-vikbez000/nightsky/v1") + "\n\n"
 
 	return out
 }
@@ -294,7 +294,7 @@ func renderTelescopeMap() string {
 		})
 	}
 
-	out += md.Link("← Back to main page", "/r/vik000/nightsky") + "\n\n"
+	out += md.Link("← Back to main page", "/r/nym-vikbez000/nightsky/v1") + "\n\n"
 
 	return out
 }

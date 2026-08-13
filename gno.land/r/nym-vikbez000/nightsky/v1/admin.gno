@@ -3,7 +3,7 @@ package nightsky
 import (
 	"gno.land/p/nt/avl/v0"
 	"gno.land/p/nt/ownable/v0"
-	"gno.land/p/vik000/nightsky"
+	nightsky "gno.land/p/nym-vikbez000/nightsky/v1"
 )
 
 // OwnableMain holds the network admin. Ownable is safe to export as a

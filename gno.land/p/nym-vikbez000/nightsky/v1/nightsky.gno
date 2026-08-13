@@ -79,11 +79,10 @@ func (t *TelescopeConfig) UpdateStatus(status string) {
 // IsAccessAllowed checks if an address has a current (non-expired) access rule.
 // rules is an avl.Tree keyed by allowed address holding AccessRule values.
 func IsAccessAllowed(address string, rules *avl.Tree) bool {
-	value, ok := rules.Get(address)
-	if !ok {
+	if !rules.Has(address) {
 		return false
 	}
-	rule := value.(AccessRule)
+	rule := rules.Get(address).(AccessRule)
 	return rule.ExpiresAt.IsZero() || time.Now().Before(rule.ExpiresAt)
 }
 

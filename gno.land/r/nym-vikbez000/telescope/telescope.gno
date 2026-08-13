@@ -4,8 +4,8 @@ import (
 	"chain"
 	"strconv"
 
-	ns "gno.land/p/vik000/nightsky"
-	registry "gno.land/r/vik000/nightsky"
+	ns "gno.land/p/nym-vikbez000/nightsky/v1"
+	registry "gno.land/r/nym-vikbez000/nightsky/v1"
 )
 
 var telescope *ns.TelescopeRealm

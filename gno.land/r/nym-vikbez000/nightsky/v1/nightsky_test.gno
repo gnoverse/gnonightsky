@@ -7,7 +7,7 @@ import (
 	"gno.land/p/nt/testutils/v0"
 	"gno.land/p/nt/uassert/v0"
 	"gno.land/p/nt/urequire/v0"
-	"gno.land/p/vik000/nightsky"
+	nightsky "gno.land/p/nym-vikbez000/nightsky/v1"
 )
 
 const scopeA = "gno.land/r/test/scopea"
@@ -35,8 +35,8 @@ func TestRegisterAndDedup(cur realm, t *testing.T) {
 	urequire.Equal(t, 1, GetTelescopeCount())
 
 	// RealmPath is stamped from the caller's pkgPath, not the (empty) input.
-	stored, ok := telescopes.Get(scopeA)
-	urequire.True(t, ok)
+	urequire.True(t, telescopes.Has(scopeA))
+	stored := telescopes.Get(scopeA)
 	uassert.Equal(t, scopeA, stored.(nightsky.TelescopeConfig).RealmPath)
 
 	// Duplicate registration from the same realm is ignored.
@@ -141,8 +141,8 @@ func TestAttackerRealmCannotTouchVictim(cur realm, t *testing.T) {
 	})
 
 	// Victim's entry is untouched.
-	stored, ok := telescopes.Get(victimPath)
-	urequire.True(t, ok)
+	urequire.True(t, telescopes.Has(victimPath))
+	stored := telescopes.Get(victimPath)
 	uassert.Equal(t, "Victim Scope", stored.(nightsky.TelescopeConfig).Name)
 	uassert.Equal(t, 1, GetTelescopeCount())
 }
