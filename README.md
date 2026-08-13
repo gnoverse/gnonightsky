@@ -4,7 +4,7 @@ Connect telescopes to the Gno.land blockchain. Telescope owners share access to 
 
 **Goal:** Observe anything in the sky in real time through a community-driven telescope network.
 
-## **[Demo video](https://www.youtube.com/watch?v=RgoUgKUKft8)**
+[![Watch video](https://img.shields.io/badge/▶%20Watch-video-FF0000?logo=youtube&logoColor=white)](https://www.youtube.com/watch?v=RgoUgKUKft8)
 
 Architecture inspired by [PiaGno](https://github.com/gnoverse/piagno) 🎹
 
@@ -20,7 +20,7 @@ Architecture inspired by [PiaGno](https://github.com/gnoverse/piagno) 🎹
          │ SubmitCommand(capture, ra, dec, exposure)
          ▼
 ┌─────────────────────────────┐
-│  r/vik000/telescope         │  ← your telescope realm
+│  r/nym-vikbez000/telescope  │  ← your telescope realm
 │                             │
 │  - Access control           │
 │  - Command queue            │
@@ -30,7 +30,7 @@ Architecture inspired by [PiaGno](https://github.com/gnoverse/piagno) 🎹
          │ cross-realm: Register / UpdateStatus / SubmitCapture
          │                                    ▼
          │                    ┌─────────────────────────────┐
-         │                    │  r/vik000/nightsky          │  ← network registry
+         │                    │  r/nym-vikbez000/nightsky/v1│  ← network registry
          │                    │                             │
          │                    │  - Telescope registry       │
          │                    │  - Network-wide captures    │
@@ -57,9 +57,10 @@ Architecture inspired by [PiaGno](https://github.com/gnoverse/piagno) 🎹
 
 | Path | Type | Role |
 |------|------|------|
-| `gno.land/p/vik000/nightsky` | package | Shared types, `TelescopeRealm` logic, render functions |
-| `gno.land/r/vik000/nightsky` | realm | Telescope registry, global capture feed |
-| `gno.land/r/vik000/telescope` | realm | Vik's personnal telescope - usable as a template |
+| `gno.land/p/nym-vikbez000/nightsky/v1` | package | Shared types, `TelescopeRealm` logic, render functions |
+| `gno.land/r/nym-vikbez000/nightsky/v1` | realm | Telescope registry, global capture feed |
+| `gno.land/r/nym-vikbez000/nightsky` | realm | Landing page linking to the current version (`/v1`) |
+| `gno.land/r/nym-vikbez000/telescope` | realm | Vik's personnal telescope - usable as a template |
 | `telescope-controller/` | Go binary | Hardware bridge to telescope |
 
 ---
@@ -68,7 +69,7 @@ Architecture inspired by [PiaGno](https://github.com/gnoverse/piagno) 🎹
 
 ### 1. Deploy your telescope realm
 
-Copy `gno.land/r/vik000/telescope` and update:
+Copy `gno.land/r/nym-vikbez000/telescope` and update:
 - `owner` address in `init()`
 - telescope name, model, coordinates
 - package path in `gnomod.toml`
@@ -170,6 +171,6 @@ gnokey maketx call \
 
 ## Links
 
-- Network: [gno.land/r/vik000/nightsky](https://gno.land/r/vik000/nightsky)
-- Example telescope: [gno.land/r/vik000/telescope](https://gno.land/r/vik000/telescope)
+- Network: [gno.land/r/nym-vikbez000/nightsky/v1](https://gno.land/r/nym-vikbez000/nightsky/v1)
+- Example telescope: [gno.land/r/nym-vikbez000/telescope](https://gno.land/r/nym-vikbez000/telescope)
 - Gno.land docs: [docs.gno.land](https://docs.gno.land)
